@@ -6,10 +6,16 @@ from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
 
+import json
+import uuid
+from datetime import datetime
+from azure.eventgrid import EventGridPublisherClient, EventGridEvent
+from azure.core.credentials import AzureKeyCredential
 
 app = Flask(__name__, static_folder='static')
 csrf = CSRFProtect(app)
-
+topic_endpoint = "https://hw3.northeurope-1.eventgrid.azure.net/api/events"
+topic_key = "I3Z1e12J3MwpqYM1Uwxez1Gc+BOEsXuX4AZEGAoc68Y="
 # WEBSITE_HOSTNAME exists only in production environment
 if 'WEBSITE_HOSTNAME' not in os.environ:
     # local development, where we'll use environment variables
@@ -94,7 +100,18 @@ def add_review(id):
         review.review_text = review_text
         db.session.add(review)
         db.session.commit()
-
+        # Create a client
+        credential = AzureKeyCredential(topic_key)
+        client = EventGridPublisherClient(topic_endpoint, credential)
+        # Create an event
+        event = EventGridEvent(
+            subject="example/subject",
+            event_type="example.eventType",
+            data={"message": "Hello, Azure Event Grid!"},
+            data_version="1.0"
+        )
+        # Send the event
+        client.send(event)
     return redirect(url_for('details', id=id))
 
 @app.context_processor
